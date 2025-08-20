@@ -1,5 +1,5 @@
-# rd-132328 [![Build and Upload JS + WASM](https://github.com/radmanplays/rd-132328/actions/workflows/build.yml/badge.svg)](https://github.com/radmanplays/rd-132328/actions/workflows/build.yml)
-<img width="800" height="600" alt="Pre-Classic_rd-132328" src="https://github.com/user-attachments/assets/2443d2ed-35ef-407b-972a-6cc61cc1465f" />
+# rd-132328 [![Build and Upload JS + WASM](https://github.com/radmanplays/rd-132328/actions/workflows/gradle.yml/badge.svg)](https://github.com/radmanplays/rd-132328/actions/workflows/gradle.yml)
+![Human_Mob](https://github.com/user-attachments/assets/83adf1eb-daf4-4496-875c-cd2e0540ef83)
 
 
 ## requires java 17 to compile!
