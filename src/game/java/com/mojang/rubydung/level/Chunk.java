@@ -15,6 +15,7 @@ public class Chunk {
 	public final int z1;
 	private boolean dirty = true;
 	private int lists = -1;
+	private static int texture = Textures.loadTexture("/terrain.png", 9728);
 	private static Tesselator t = new Tesselator();
 	public static int rebuiltThisFrame = 0;
 	public static int updates = 0;
@@ -32,14 +33,12 @@ public class Chunk {
 	}
 
 	private void rebuild(int layer) {
-		if(rebuiltThisFrame != 2) {
 			this.dirty = false;
 			++updates;
 			++rebuiltThisFrame;
-			int id = Textures.loadTexture("/terrain.png", 9728);
 			GL11.glNewList(this.lists + layer, GL11.GL_COMPILE);
 			GL11.glEnable(GL11.GL_TEXTURE_2D);
-			GL11.glBindTexture(GL11.GL_TEXTURE_2D, id);
+			GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 			t.init();
 			int tiles = 0;
 
@@ -62,7 +61,6 @@ public class Chunk {
 			t.flush();
 			GL11.glDisable(GL11.GL_TEXTURE_2D);
 			GL11.glEndList();
-		}
 	}
 
 	public void render(int layer) {
@@ -70,7 +68,8 @@ public class Chunk {
 			this.rebuild(0);
 			this.rebuild(1);
 		}
-
+		GL11.glEnable(GL11.GL_TEXTURE_2D);
+		GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 		GL11.glCallList(this.lists + layer);
 	}
 

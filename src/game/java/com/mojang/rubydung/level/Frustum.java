@@ -1,8 +1,10 @@
 package com.mojang.rubydung.level;
 
 import com.mojang.rubydung.phys.AABB;
-import java.nio.FloatBuffer;
-import org.lwjgl.BufferUtils;
+
+import com.mojang.util.GLAllocation;
+import net.lax1dude.eaglercraft.internal.buffer.FloatBuffer;
+
 import org.lwjgl.opengl.GL11;
 
 public class Frustum {
@@ -18,9 +20,9 @@ public class Frustum {
 	public static final int C = 2;
 	public static final int D = 3;
 	private static Frustum frustum = new Frustum();
-	private FloatBuffer _proj = BufferUtils.createFloatBuffer(16);
-	private FloatBuffer _modl = BufferUtils.createFloatBuffer(16);
-	private FloatBuffer _clip = BufferUtils.createFloatBuffer(16);
+	private FloatBuffer _proj = GLAllocation.createFloatBuffer(16);
+	private FloatBuffer _modl = GLAllocation.createFloatBuffer(16);
+	private FloatBuffer _clip = GLAllocation.createFloatBuffer(16);
 	float[] proj = new float[16];
 	float[] modl = new float[16];
 	float[] clip = new float[16];

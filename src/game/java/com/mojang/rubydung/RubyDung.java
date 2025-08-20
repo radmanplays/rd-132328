@@ -5,33 +5,38 @@ import com.mojang.rubydung.character.Zombie;
 import com.mojang.rubydung.level.Chunk;
 import com.mojang.rubydung.level.Level;
 import com.mojang.rubydung.level.LevelRenderer;
-import java.awt.Component;
+
+import com.mojang.util.GLAllocation;
+import net.lax1dude.eaglercraft.EagRuntime;
+
 import java.io.IOException;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.util.ArrayList;
-import javax.swing.JOptionPane;
-import org.lwjgl.BufferUtils;
+
 import org.lwjgl.LWJGLException;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
+
+import net.lax1dude.eaglercraft.internal.EnumPlatformType;
+import net.lax1dude.eaglercraft.internal.buffer.FloatBuffer;
+import net.lax1dude.eaglercraft.internal.buffer.IntBuffer;
 
 public class RubyDung implements Runnable {
 	private static final boolean FULLSCREEN_MODE = false;
 	private int width;
 	private int height;
-	private FloatBuffer fogColor = BufferUtils.createFloatBuffer(4);
+	private int lastWidth;
+	private int lastHeight;
+	private FloatBuffer fogColor = GLAllocation.createFloatBuffer(4);
 	private Timer timer = new Timer(60.0F);
 	private Level level;
 	private LevelRenderer levelRenderer;
 	private Player player;
-	private ArrayList<Zombie> zombies = new ArrayList();
-	private IntBuffer viewportBuffer = BufferUtils.createIntBuffer(16);
-	private IntBuffer selectBuffer = BufferUtils.createIntBuffer(2000);
+    private ArrayList<Zombie> zombies = new ArrayList();
+	private IntBuffer viewportBuffer = GLAllocation.createIntBuffer(16);
+	private IntBuffer selectBuffer = GLAllocation.createIntBuffer(2000);
 	private HitResult hitResult = null;
 
 	public void init() throws LWJGLException, IOException {
@@ -39,54 +44,53 @@ public class RubyDung implements Runnable {
 		float fr = 0.5F;
 		float fg = 0.8F;
 		float fb = 1.0F;
-		this.fogColor.put(new float[]{(float)(col >> 16 & 255) / 255.0F, (float)(col >> 8 & 255) / 255.0F, (float)(col & 255) / 255.0F, 1.0F});
-		this.fogColor.flip();
-		Display.setDisplayMode(new DisplayMode(1024, 768));
+		this.fogColor.put(new float[]{(float)(col >> 16 & 255) / 255.0F, (float)(col >> 8 & 255) / 255.0F, (float)(col & 255) / 255.0F, 1.0F}).flip();
 		Display.create();
 		Keyboard.create();
 		Mouse.create();
-		this.width = Display.getDisplayMode().getWidth();
-		this.height = Display.getDisplayMode().getHeight();
+		this.width = Display.getWidth();
+		this.height = Display.getHeight();
 		GL11.glEnable(GL11.GL_TEXTURE_2D);
 		GL11.glShadeModel(GL11.GL_SMOOTH);
 		GL11.glClearColor(fr, fg, fb, 0.0F);
 		GL11.glClearDepth(1.0D);
 		GL11.glEnable(GL11.GL_DEPTH_TEST);
 		GL11.glDepthFunc(GL11.GL_LEQUAL);
-		GL11.glMatrixMode(GL11.GL_PROJECTION);
-		GL11.glLoadIdentity();
-		GL11.glMatrixMode(GL11.GL_MODELVIEW);
+		setupProjection(this.width, this.height);
 		this.level = new Level(256, 256, 64);
 		this.levelRenderer = new LevelRenderer(this.level);
 		this.player = new Player(this.level);
-		Mouse.setGrabbed(true);
-
-		for(int i = 0; i < 100; ++i) {
-			this.zombies.add(new Zombie(this.level, 128.0F, 0.0F, 128.0F));
-		}
-
+        Mouse.setGrabbed(true);
+        for(int i = 0; i < 100; ++i) {
+                this.zombies.add(new Zombie(this.level, 128.0F, 0.0F, 128.0F));
+        }
 	}
+	
+    private void setupProjection(int width, int height) {
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glLoadIdentity();
+        GLU.gluPerspective(70.0F, (float) width / height, 0.05F, 1000.0F);
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+    }
 
 	public void destroy() {
 		this.level.save();
-		Mouse.destroy();
-		Keyboard.destroy();
-		Display.destroy();
+		EagRuntime.destroy();
 	}
 
 	public void run() {
 		try {
 			this.init();
 		} catch (Exception var9) {
-			JOptionPane.showMessageDialog((Component)null, var9.toString(), "Failed to start RubyDung", 0);
-			System.exit(0);
+			System.out.println("Failed to start RubyDung");
+			throw new RuntimeException(var9);
 		}
 
 		long lastTime = System.currentTimeMillis();
 		int frames = 0;
 
 		try {
-			while(!Keyboard.isKeyDown(Keyboard.KEY_ESCAPE) && !Display.isCloseRequested()) {
+			while(!Display.isCloseRequested() && (EagRuntime.getPlatformType() != EnumPlatformType.DESKTOP || !Keyboard.isKeyDown(Keyboard.KEY_ESCAPE))) {
 				this.timer.advanceTime();
 
 				for(int e = 0; e < this.timer.ticks; ++e) {
@@ -112,10 +116,9 @@ public class RubyDung implements Runnable {
 	}
 
 	public void tick() {
-		for(int i = 0; i < this.zombies.size(); ++i) {
-			((Zombie)this.zombies.get(i)).tick();
-		}
-
+        for(int i = 0; i < this.zombies.size(); ++i) {
+            ((Zombie)this.zombies.get(i)).tick();
+        }
 		this.player.tick();
 	}
 
@@ -130,66 +133,79 @@ public class RubyDung implements Runnable {
 	}
 
 	private void setupCamera(float a) {
-		GL11.glMatrixMode(GL11.GL_PROJECTION);
-		GL11.glLoadIdentity();
-		GLU.gluPerspective(70.0F, (float)this.width / (float)this.height, 0.05F, 1000.0F);
-		GL11.glMatrixMode(GL11.GL_MODELVIEW);
-		GL11.glLoadIdentity();
-		this.moveCameraToPlayer(a);
-	}
+        this.width = Display.getWidth();
+        this.height = Display.getHeight();
 
-	private void setupPickCamera(float a, int x, int y) {
-		GL11.glMatrixMode(GL11.GL_PROJECTION);
-		GL11.glLoadIdentity();
-		this.viewportBuffer.clear();
-		GL11.glGetInteger(GL11.GL_VIEWPORT, this.viewportBuffer);
-		this.viewportBuffer.flip();
-		this.viewportBuffer.limit(16);
-		GLU.gluPickMatrix((float)x, (float)y, 5.0F, 5.0F, this.viewportBuffer);
-		GLU.gluPerspective(70.0F, (float)this.width / (float)this.height, 0.05F, 1000.0F);
-		GL11.glMatrixMode(GL11.GL_MODELVIEW);
+	    if (width != lastWidth || height != lastHeight) {
+	        lastWidth = width;
+	        lastHeight = height;
+            GL11.glViewport(0, 0, this.width, this.height);
+            setupProjection(this.width, this.height);
+        }
 		GL11.glLoadIdentity();
 		this.moveCameraToPlayer(a);
 	}
 
 	private void pick(float a) {
-		this.selectBuffer.clear();
-		GL11.glSelectBuffer(this.selectBuffer);
-		GL11.glRenderMode(GL11.GL_SELECT);
-		this.setupPickCamera(a, this.width / 2, this.height / 2);
-		this.levelRenderer.pick(this.player);
-		int hits = GL11.glRenderMode(GL11.GL_RENDER);
-		this.selectBuffer.flip();
-		this.selectBuffer.limit(this.selectBuffer.capacity());
-		long closest = 0L;
-		int[] names = new int[10];
-		int hitNameCount = 0;
+	    double px = player.x;
+	    double py = player.y;
+	    double pz = player.z;
 
-		for(int i = 0; i < hits; ++i) {
-			int nameCount = this.selectBuffer.get();
-			long minZ = (long)this.selectBuffer.get();
-			this.selectBuffer.get();
-			int j;
-			if(minZ >= closest && i != 0) {
-				for(j = 0; j < nameCount; ++j) {
-					this.selectBuffer.get();
-				}
-			} else {
-				closest = minZ;
-				hitNameCount = nameCount;
+	    float yaw = (float) Math.toRadians(player.yRot);
+	    float pitch = (float) Math.toRadians(player.xRot);
 
-				for(j = 0; j < nameCount; ++j) {
-					names[j] = this.selectBuffer.get();
-				}
-			}
-		}
+	    double dx = Math.sin(yaw) * Math.cos(pitch);
+	    double dy = -Math.sin(pitch);
+	    double dz = -Math.cos(yaw) * Math.cos(pitch);
 
-		if(hitNameCount > 0) {
-			this.hitResult = new HitResult(names[0], names[1], names[2], names[3], names[4]);
-		} else {
-			this.hitResult = null;
-		}
+	    double reach = 3.0;
+	    double step = 0.05;
 
+	    HitResult closestHit = null;
+
+	    double closestT = reach + 1;
+
+	    for (int x = (int) Math.floor(px - reach); x <= (int) Math.floor(px + reach); x++) {
+	        for (int y = (int) Math.floor(py - (reach + 1)); y <= (int) Math.floor(py + (reach + 1)); y++) {
+	            for (int z = (int) Math.floor(pz - reach); z <= (int) Math.floor(pz + reach); z++) {
+	                int block = level.getTile(x, y, z);
+	                if (block != 0) {
+
+	                    double txmin = (x - px) / dx;
+	                    double txmax = (x + 1 - px) / dx;
+	                    if (txmin > txmax) { double temp = txmin; txmin = txmax; txmax = temp; }
+
+	                    double tymin = (y - py) / dy;
+	                    double tymax = (y + 1 - py) / dy;
+	                    if (tymin > tymax) { double temp = tymin; tymin = tymax; tymax = temp; }
+
+	                    double tzmin = (z - pz) / dz;
+	                    double tzmax = (z + 1 - pz) / dz;
+	                    if (tzmin > tzmax) { double temp = tzmin; tzmin = tzmax; tzmax = temp; }
+
+	                    double tEnter = Math.max(Math.max(txmin, tymin), tzmin);
+	                    double tExit = Math.min(Math.min(txmax, tymax), tzmax);
+
+	                    if (tEnter <= tExit && tEnter < closestT && tEnter >= 0 && tEnter <= reach + 1) {
+	                        closestT = tEnter;
+
+	                        int face;
+	                        if (tEnter == txmin) {
+	                            face = dx > 0 ? 4 : 5;
+	                        } else if (tEnter == tymin) {
+	                            face = dy > 0 ? 0 : 1;
+	                        } else {
+	                            face = dz > 0 ? 2 : 3;
+	                        }
+
+	                        closestHit = new HitResult(x, y, z, block, face);
+	                    }
+	                }
+	            }
+	        }
+	    }
+
+	    this.hitResult = closestHit;
 	}
 
 	public void render(float a) {
@@ -197,9 +213,12 @@ public class RubyDung implements Runnable {
 		float yo = (float)Mouse.getDY();
 		this.player.turn(xo, yo);
 		this.pick(a);
-
-		int i;
+        int i;
 		while(Mouse.next()) {
+			if (Mouse.getEventButtonState()) {
+				Mouse.setGrabbed(true);
+			}
+
 			if(Mouse.getEventButton() == 1 && Mouse.getEventButtonState() && this.hitResult != null) {
 				this.level.setTile(this.hitResult.x, this.hitResult.y, this.hitResult.z, 0);
 			}
@@ -237,9 +256,20 @@ public class RubyDung implements Runnable {
 		}
 
 		while(Keyboard.next()) {
+			Mouse.setGrabbed(true);
 			if(Keyboard.getEventKey() == Keyboard.KEY_RETURN && Keyboard.getEventKeyState()) {
 				this.level.save();
 			}
+			if(Keyboard.getEventKey() == Keyboard.KEY_BACK && Keyboard.getEventKeyState()) {
+				this.level.reset();
+				this.player.resetPos();
+			}
+		}
+
+		if (Display.wasResized()) {
+			this.width = Display.getWidth();
+			this.height = Display.getHeight();
+			GL11.glViewport(0, 0, this.width, this.height);
 		}
 
 		GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_COLOR_BUFFER_BIT);
@@ -251,19 +281,17 @@ public class RubyDung implements Runnable {
 		GL11.glFog(GL11.GL_FOG_COLOR, this.fogColor);
 		GL11.glDisable(GL11.GL_FOG);
 		this.levelRenderer.render(this.player, 0);
-
-		for(i = 0; i < this.zombies.size(); ++i) {
-			((Zombie)this.zombies.get(i)).render(a);
-		}
-
+        for(i = 0; i < this.zombies.size(); ++i) {
+            ((Zombie)this.zombies.get(i)).render(a);
+        }
 		GL11.glEnable(GL11.GL_FOG);
 		this.levelRenderer.render(this.player, 1);
 		GL11.glDisable(GL11.GL_TEXTURE_2D);
 		if(this.hitResult != null) {
 			this.levelRenderer.renderHit(this.hitResult);
 		}
-
-		new Cube(0, 0);
+		
+        new Cube(0, 0);
 		GL11.glDisable(GL11.GL_FOG);
 		Display.update();
 	}
@@ -273,9 +301,5 @@ public class RubyDung implements Runnable {
 		if(e != 0) {
 			throw new IllegalStateException(GLU.gluErrorString(e));
 		}
-	}
-
-	public static void main(String[] args) throws LWJGLException {
-		(new Thread(new RubyDung())).start();
 	}
 }

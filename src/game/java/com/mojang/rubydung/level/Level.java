@@ -3,9 +3,7 @@ package com.mojang.rubydung.level;
 import com.mojang.rubydung.phys.AABB;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import net.lax1dude.eaglercraft.internal.vfs2.VFile2;
 import java.util.ArrayList;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -40,7 +38,11 @@ public class Level {
 
 	public void load() {
 		try {
-			DataInputStream e = new DataInputStream(new GZIPInputStream(new FileInputStream(new File("level.dat"))));
+			VFile2 file = new VFile2("level.dat");
+			if (!file.exists()) {
+				return;
+			}
+			DataInputStream e = new DataInputStream(new GZIPInputStream(file.getInputStream()));
 			e.readFully(this.blocks);
 			this.calcLightDepths(0, 0, this.width, this.height);
 
@@ -57,9 +59,35 @@ public class Level {
 
 	public void save() {
 		try {
-			DataOutputStream e = new DataOutputStream(new GZIPOutputStream(new FileOutputStream(new File("level.dat"))));
+			VFile2 file = new VFile2("level.dat");
+			DataOutputStream e = new DataOutputStream(new GZIPOutputStream(file.getOutputStream()));
 			e.write(this.blocks);
 			e.close();
+		} catch (Exception var2) {
+			var2.printStackTrace();
+		}
+
+	}
+
+	public void reset() {
+		try {
+			VFile2 file = new VFile2("level.dat");
+			if (file.exists()) {
+				file.delete();
+			}
+			java.util.Arrays.fill(this.blocks, (byte)0);
+			for(int x = 0; x < this.width; ++x) {
+				for(int y = 0; y < this.depth; ++y) {
+					for(int z = 0; z < this.height; ++z) {
+						int i = (y * this.height + z) * this.width + x;
+						this.blocks[i] = (byte)(y <= this.depth * 2 / 3 ? 1 : 0);
+					}
+				}
+			}
+			this.calcLightDepths(0, 0, this.width, this.height);
+			for (int i = 0; i < this.levelListeners.size(); ++i) {
+				((LevelListener)this.levelListeners.get(i)).allChanged();
+			}
 		} catch (Exception var2) {
 			var2.printStackTrace();
 		}
@@ -108,6 +136,14 @@ public class Level {
 	public boolean isLightBlocker(int x, int y, int z) {
 		return this.isSolidTile(x, y, z);
 	}
+	
+	public int getTile(int x, int y, int z) {
+	    if(x >= 0 && y >= 0 && z >= 0 && x < this.width && y < this.depth && z < this.height) {
+	        return this.blocks[(y * this.height + z) * this.width + x] & 0xFF;
+	    }
+	    return 0;
+	}
+
 
 	public ArrayList<AABB> getCubes(AABB aABB) {
 		ArrayList aABBs = new ArrayList();

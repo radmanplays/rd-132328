@@ -2,7 +2,6 @@ package com.mojang.rubydung.level;
 
 import com.mojang.rubydung.HitResult;
 import com.mojang.rubydung.Player;
-import com.mojang.rubydung.phys.AABB;
 import org.lwjgl.opengl.GL11;
 
 public class LevelRenderer implements LevelListener {
@@ -62,54 +61,10 @@ public class LevelRenderer implements LevelListener {
 
 	}
 
-	public void pick(Player player) {
-		float r = 3.0F;
-		AABB box = player.bb.grow(r, r, r);
-		int x0 = (int)box.x0;
-		int x1 = (int)(box.x1 + 1.0F);
-		int y0 = (int)box.y0;
-		int y1 = (int)(box.y1 + 1.0F);
-		int z0 = (int)box.z0;
-		int z1 = (int)(box.z1 + 1.0F);
-		GL11.glInitNames();
-
-		for(int x = x0; x < x1; ++x) {
-			GL11.glPushName(x);
-
-			for(int y = y0; y < y1; ++y) {
-				GL11.glPushName(y);
-
-				for(int z = z0; z < z1; ++z) {
-					GL11.glPushName(z);
-					if(this.level.isSolidTile(x, y, z)) {
-						GL11.glPushName(0);
-
-						for(int i = 0; i < 6; ++i) {
-							GL11.glPushName(i);
-							this.t.init();
-							Tile.rock.renderFace(this.t, x, y, z, i);
-							this.t.flush();
-							GL11.glPopName();
-						}
-
-						GL11.glPopName();
-					}
-
-					GL11.glPopName();
-				}
-
-				GL11.glPopName();
-			}
-
-			GL11.glPopName();
-		}
-
-	}
-
 	public void renderHit(HitResult h) {
 		GL11.glEnable(GL11.GL_BLEND);
 		GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-		GL11.glColor4f(1.0F, 1.0F, 1.0F, (float)Math.sin((double)System.currentTimeMillis() / 100.0D) * 0.2F + 0.4F);
+		GL11.color(1.0F, 1.0F, 1.0F, (float)Math.sin((double)System.currentTimeMillis() / 100.0D) * 0.2F + 0.4F);
 		this.t.init();
 		Tile.rock.renderFace(this.t, h.x, h.y, h.z, h.f);
 		this.t.flush();
