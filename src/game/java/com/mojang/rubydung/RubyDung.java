@@ -116,18 +116,16 @@ public class RubyDung implements Runnable {
 
 	}
 	
-	public int ticksUntilSave = 600;
+	private int saveCountdown = 600;
 
 	private void levelSave() {
+	    if (level == null) return;
 
-		if (this.level == null) {
-			ticksUntilSave = this.timer.ticks + 600;
-		}
-
-		if (this.timer.ticks >= this.ticksUntilSave) {
-			this.level.save();
-			ticksUntilSave = this.timer.ticks + 600;
-		}
+	    saveCountdown--;
+	    if (saveCountdown <= 0) {
+	        level.save();
+	        saveCountdown = 600;
+	    }
 	}
 
 	public void tick() {
