@@ -3,6 +3,7 @@ package com.mojang.rubydung;
 import com.mojang.rubydung.character.Cube;
 import com.mojang.rubydung.character.Zombie;
 import com.mojang.rubydung.level.Chunk;
+import com.mojang.rubydung.level.Frustum;
 import com.mojang.rubydung.level.Level;
 import com.mojang.rubydung.level.LevelRenderer;
 
@@ -62,7 +63,7 @@ public class RubyDung implements Runnable {
 		this.player = new Player(this.level);
         Mouse.setGrabbed(true);
         for(int i = 0; i < 100; ++i) {
-                this.zombies.add(new Zombie(this.level, 128.0F, 0.0F, 128.0F));
+        	this.zombies.add(new Zombie(this.level, 128.0F, 0.0F, 128.0F));
         }
 	}
 	
@@ -114,12 +115,27 @@ public class RubyDung implements Runnable {
 		}
 
 	}
+	
+	public int ticksUntilSave = 600;
+
+	private void levelSave() {
+
+		if (this.level == null) {
+			ticksUntilSave = this.timer.ticks + 600;
+		}
+
+		if (this.timer.ticks >= this.ticksUntilSave) {
+			this.level.save();
+			ticksUntilSave = this.timer.ticks + 600;
+		}
+	}
 
 	public void tick() {
         for(int i = 0; i < this.zombies.size(); ++i) {
             ((Zombie)this.zombies.get(i)).tick();
         }
 		this.player.tick();
+		levelSave();
 	}
 
 	private void moveCameraToPlayer(float a) {
@@ -282,7 +298,9 @@ public class RubyDung implements Runnable {
 		GL11.glDisable(GL11.GL_FOG);
 		this.levelRenderer.render(this.player, 0);
         for(i = 0; i < this.zombies.size(); ++i) {
-            ((Zombie)this.zombies.get(i)).render(a);
+        	if(Frustum.getFrustum().cubeInFrustum(this.zombies.get(i).bb)) {
+        		((Zombie)this.zombies.get(i)).render(a);
+        	}
         }
 		GL11.glEnable(GL11.GL_FOG);
 		this.levelRenderer.render(this.player, 1);
